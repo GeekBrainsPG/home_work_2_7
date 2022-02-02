@@ -71,7 +71,12 @@ public class ClientHandler {
                 if ("/end".equals(message)) {
                     break;
                 }
-                chatServer.broadcast(message);
+                if (message.startsWith("/w")) {
+                    final String nick = message.split(" ")[1];
+                    chatServer.sendPrivateMessage(nick, message);
+                } else {
+                    chatServer.broadcast(message);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }

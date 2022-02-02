@@ -49,4 +49,10 @@ public class ChatServer {
             client.sendMessage(message);
         }
     }
+
+    public void sendPrivateMessage(String nick, String message) {
+        if (clients.containsKey(nick)) {
+            clients.get(nick).sendMessage(message);
+        }
+    }
 }
