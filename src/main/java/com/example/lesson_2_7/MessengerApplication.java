@@ -11,7 +11,7 @@ public class MessengerApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(MessengerApplication.class.getResource("messenger-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 420, 340);
+        Scene scene = new Scene(fxmlLoader.load(), 650, 400);
         stage.setTitle("Messenger");
         stage.setScene(scene);
         stage.show();
