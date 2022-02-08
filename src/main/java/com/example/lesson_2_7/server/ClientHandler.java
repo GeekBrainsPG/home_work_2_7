@@ -1,10 +1,15 @@
 package com.example.lesson_2_7.server;
 
+import com.example.lesson_2_7.Command;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+import static com.example.lesson_2_7.Command.*;
 
 public class ClientHandler {
 
@@ -13,6 +18,7 @@ public class ClientHandler {
     private final DataInputStream in;
     private final DataOutputStream out;
 
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("dd-MM HH:mm");
 
     private String nick;
 
@@ -68,15 +74,24 @@ public class ClientHandler {
         while (true) {
             try {
                 final String message = in.readUTF();
-                if ("/end".equals(message)) {
-                    break;
+
+                if (Command.isCommand(message)) {
+                    if (message.startsWith(Command.getCommandPrefix())) {
+                        if (Command.getCommandByText(message) == END) {
+                            break;
+                        }
+                        if (Command.getCommandByText(message) == PRIVATE_MESSAGE) {
+                            final String[] split = message.split(" ");
+                            final String nickTo = split[1];
+                            final int amountOfSymbolsToSubstring = PRIVATE_MESSAGE.getCommand().length() + 2 + nickTo.length();
+                            chatServer.sendMessageToClient(this, nick, message.substring(amountOfSymbolsToSubstring));
+                        }
+
+                        continue;
+                    }
                 }
-                if (message.startsWith("/w")) {
-                    final String nick = message.split(" ")[1];
-                    chatServer.sendPrivateMessage(nick, message);
-                } else {
-                    chatServer.broadcast(message);
-                }
+
+                chatServer.broadcast(nick + ": " + message);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -88,7 +103,7 @@ public class ClientHandler {
             try {
                 final String message = in.readUTF();
 
-                if (message.startsWith("/auth")) {
+                if (Command.getCommandByText(message) == AUTH) {
                     final String[] split = message.split(" ");
                     String login = split[1];
                     String password = split[2];
@@ -100,7 +115,7 @@ public class ClientHandler {
                             sendMessage("User already authorized");
                             continue;
                         }
-                        sendMessage("/authok " + nick);
+                        sendMessage(Command.AUTHOK, nick);
                         this.nick = nick;
                         chatServer.broadcast("User " + nick + " is online");
                         chatServer.subscribe(this);
@@ -116,13 +131,17 @@ public class ClientHandler {
         }
     }
 
+    public void sendMessage(Command command, String message) {
+        try {
+            out.writeUTF(command.getCommand() + " " + message);
+        } catch (IOException exception) {
+            exception.printStackTrace();
+        }
+    }
+
     public void sendMessage(String message) {
         try {
-            if (message.startsWith("/authok")) {
-                out.writeUTF(message);
-            } else {
-                out.writeUTF(LocalDateTime.now() + " / " + nick + ": " + message);
-            }
+            out.writeUTF(LocalDateTime.now().format(FORMATTER) + ": " + message);
         } catch (IOException e) {
             e.printStackTrace();
         }

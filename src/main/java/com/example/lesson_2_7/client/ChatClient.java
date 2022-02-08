@@ -1,11 +1,16 @@
 package com.example.lesson_2_7.client;
 
+import com.example.lesson_2_7.Command;
 import com.example.lesson_2_7.MessengerController;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.Arrays;
+import java.util.List;
+
+import static com.example.lesson_2_7.Command.*;
 
 public class ChatClient {
 
@@ -13,6 +18,7 @@ public class ChatClient {
     private DataInputStream in;
     private DataOutputStream out;
     private MessengerController controller;
+    private boolean isUserAuthorized;
 
     public ChatClient(MessengerController controller) {
         this.controller = controller;
@@ -24,13 +30,30 @@ public class ChatClient {
 
             new Thread(() -> {
                 try {
+                    Thread.sleep(12000);
+
+                    System.out.println("Is user authorized: " + isUserAuthorized);
+
+                    if (!isUserAuthorized) {
+                        controller.exitChat();
+                        closeConnection();
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            new Thread(() -> {
+                try {
                     while (true) {
                         String authMessage = in.readUTF();
 
-                        if (authMessage.startsWith("/authok")) {
+                        if (getCommandByText(authMessage) == AUTHOK) {
                             String nick = authMessage.split(" ")[1];
 
                             controller.addMessage("User " + nick + " successfully authorized");
+                            controller.setAuth(true);
+                            isUserAuthorized = true;
                             break;
                         }
                     }
@@ -38,8 +61,19 @@ public class ChatClient {
                     while (true) {
                         final String message = in.readUTF();
 
-                        if ("/end".equals(message)) {
-                            break;
+                        if (Command.isCommand(message)) {
+                            Command command = getCommandByText(message);
+
+                            if (command == END) {
+                                controller.setAuth(false);
+                                break;
+                            }
+
+                            if (command == CLIENTS) {
+                                String[] clients = message.replace(CLIENTS.getCommand() + " ", "").split(" ");
+
+                                controller.updateClientsList(clients);
+                            }
                         }
 
                         controller.addMessage(message);
@@ -88,4 +122,6 @@ public class ChatClient {
             e.printStackTrace();
         }
     }
+
+
 }

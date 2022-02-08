@@ -1,9 +1,14 @@
 package com.example.lesson_2_7.server;
 
+import com.example.lesson_2_7.Command;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.example.lesson_2_7.Command.CLIENTS;
 
 public class ChatServer {
 
@@ -30,10 +35,12 @@ public class ChatServer {
 
     public void subscribe(ClientHandler client) {
         clients.put(client.getNick(), client);
+        broadcastClientList();
     }
 
     public void unsubscribe(ClientHandler client) {
         clients.remove(client.getNick());
+        broadcastClientList();
     }
 
     public boolean isNickBusy(String nick) {
@@ -50,9 +57,35 @@ public class ChatServer {
         }
     }
 
-    public void sendPrivateMessage(String nick, String message) {
-        if (clients.containsKey(nick)) {
-            clients.get(nick).sendMessage(message);
+    public void sendMessageToClient(ClientHandler from, String nickTo, String message) {
+        ClientHandler clientTo = clients.get(nickTo);
+
+        if (clientTo != null) {
+            clientTo.sendMessage("From " + from.getNick() + ": " + message);
+            from.sendMessage("User " + nickTo + ": " + message);
+
+            return;
+        }
+
+        from.sendMessage("User with nick " + nickTo + " doesn't exists");
+    }
+
+    public void broadcastClientList() {
+        String message = clients.values().stream()
+                .map(ClientHandler::getNick)
+                .collect(Collectors.joining(" "));
+
+//        StringBuilder message = new StringBuilder("/clients ");
+//        clients.values().forEach(client -> message.append(client.getNick()).append(" "));
+//        broadcast(message.toString());
+
+        broadcast(CLIENTS, message);
+        broadcast(message);
+    }
+
+    private void broadcast(Command command, String message) {
+        for (ClientHandler client : clients.values()) {
+            client.sendMessage(command, message);
         }
     }
 }
